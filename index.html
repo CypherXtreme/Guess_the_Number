@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guess the Number</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --bg: #e8edf2;
+  --ink: #16213a;
+  --muted: #5c6a82;
+  --card: #ffffff;
+  --blue: #2b50e0;
+  --yellow: #ffc145;
+  --green: #1f9d6b;
+  --red: #d6403a;
+  --line: #c9d2de;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1626;
+    --ink: #eaf0fb;
+    --muted: #93a1ba;
+    --card: #18223a;
+    --blue: #7c97ff;
+    --line: #2b3855;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.4;
+}
+
+.game { width: 100%; max-width: 520px; }
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 9vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.sub { margin: 10px 0 28px; color: var(--muted); }
+
+/* Number line */
+.track-wrap { margin-bottom: 24px; }
+
+.track {
+  position: relative;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--yellow);
+  overflow: hidden;
+  border: 2px solid var(--ink);
+}
+
+.cut {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(135deg, var(--ink) 0 3px, transparent 3px 8px);
+  opacity: 0.85;
+  transition: width 0.35s ease;
+}
+.cut-low  { left: 0;  width: 0; }
+.cut-high { right: 0; width: 0; }
+
+.marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  margin-left: -3px;
+  background: var(--green);
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+#rangeText { font-weight: 600; color: var(--ink); }
+
+/* Panel */
+.panel {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  padding: 24px;
+}
+
+.message {
+  margin: 0 0 18px;
+  min-height: 2.6em;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.message.low, .message.high { color: var(--red); }
+.message.win { color: var(--green); }
+.message.error { color: var(--muted); }
+
+.controls { display: flex; gap: 10px; }
+
+input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--bg);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+}
+input[type="number"]:focus { outline: 3px solid var(--blue); outline-offset: 1px; border-color: var(--blue); }
+
+button {
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 12px 22px;
+  border: 2px solid var(--ink);
+  background: var(--blue);
+  color: #fff;
+  transition: transform 0.1s ease;
+}
+button:hover { transform: translateY(-1px); }
+button:active { transform: translateY(1px); }
+button:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+button:disabled, input:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.attempts { margin: 18px 0 8px; color: var(--muted); }
+.attempts strong { color: var(--ink); }
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.history li {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 2px solid var(--line);
+}
+.history li.low  { border-color: var(--red); }
+.history li.high { border-color: var(--red); }
+.history li.win  { border-color: var(--green); background: var(--green); color: #fff; }
+
+.restart { margin-top: 20px; width: 100%; background: var(--ink); color: var(--card); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Shake on invalid or wrong guess */
+.shake { animation: shake 0.3s; }
+@keyframes shake {
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+  <main class="game">
+    <header>
+      <h1>Guess the number</h1>
+      <p class="sub">I'm thinking of a number between 1 and 100.</p>
+    </header>
+
+    <section class="track-wrap" aria-label="Possible range">
+      <div class="track" id="track">
+        <div class="cut cut-low" id="cutLow"></div>
+        <div class="cut cut-high" id="cutHigh"></div>
+        <div class="marker" id="marker" hidden></div>
+      </div>
+      <div class="scale"><span>1</span><span id="rangeText">1 – 100</span><span>100</span></div>
+    </section>
+
+    <section class="panel">
+      <p id="message" class="message" role="status" aria-live="polite">Enter your first guess.</p>
+
+      <div class="controls">
+        <label for="guessInput" class="visually-hidden">Your guess</label>
+        <input id="guessInput" type="number" inputmode="numeric" min="1" max="100" placeholder="1–100" autocomplete="off" autofocus>
+        <button id="guessBtn" type="button">Guess</button>
+      </div>
+
+      <p class="attempts">Attempts: <strong id="attempts">0</strong></p>
+      <ul class="history" id="history" aria-label="Previous guesses"></ul>
+
+      <button id="restartBtn" type="button" class="restart" hidden>Play again</button>
+    </section>
+  </main>
+
+  <script>
+// Guess the Number — browser version of the Python game
+const MIN = 1;
+const MAX = 100;
+
+const input = document.getElementById("guessInput");
+const guessBtn = document.getElementById("guessBtn");
+const restartBtn = document.getElementById("restartBtn");
+const message = document.getElementById("message");
+const attemptsEl = document.getElementById("attempts");
+const historyEl = document.getElementById("history");
+const cutLow = document.getElementById("cutLow");
+const cutHigh = document.getElementById("cutHigh");
+const marker = document.getElementById("marker");
+const rangeText = document.getElementById("rangeText");
+
+let secret, guesses, low, high;
+
+function randomNumber() {
+  return Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;
+}
+
+function pct(value) {
+  // position of a number on the 1–100 track, as a percentage
+  return ((value - MIN) / (MAX - MIN)) * 100;
+}
+
+function setMessage(text, type = "") {
+  message.textContent = text;
+  message.className = "message " + type;
+}
+
+function shake(el) {
+  el.classList.remove("shake");
+  void el.offsetWidth; // restart animation
+  el.classList.add("shake");
+}
+
+function updateTrack() {
+  cutLow.style.width = low > MIN ? pct(low - 1) + "%" : "0";
+  cutHigh.style.width = high < MAX ? 100 - pct(high + 1) + "%" : "0";
+  rangeText.textContent = low + " – " + high;
+}
+
+function addHistory(value, type) {
+  const li = document.createElement("li");
+  li.textContent = value;
+  li.className = type;
+  historyEl.appendChild(li);
+}
+
+function newGame() {
+  secret = randomNumber();
+  guesses = 0;
+  low = MIN;
+  high = MAX;
+
+  attemptsEl.textContent = "0";
+  historyEl.innerHTML = "";
+  marker.hidden = true;
+  restartBtn.hidden = true;
+  input.disabled = false;
+  guessBtn.disabled = false;
+  input.value = "";
+  updateTrack();
+  setMessage("Enter your first guess.");
+  input.focus();
+}
+
+function endGame() {
+  input.disabled = true;
+  guessBtn.disabled = true;
+  restartBtn.hidden = false;
+  restartBtn.focus();
+}
+
+function handleGuess() {
+  const value = parseInt(input.value, 10);
+
+  if (Number.isNaN(value) || value < MIN || value > MAX) {
+    setMessage(`Enter a whole number from ${MIN} to ${MAX}.`, "error");
+    shake(input);
+    input.focus();
+    return;
+  }
+
+  guesses++;
+  attemptsEl.textContent = guesses;
+
+  if (value > secret) {
+    high = Math.min(high, value - 1);
+    setMessage("Lower number please.", "low");
+    addHistory(value, "low");
+    shake(message);
+  } else if (value < secret) {
+    low = Math.max(low, value + 1);
+    setMessage("Higher number please.", "high");
+    addHistory(value, "high");
+    shake(message);
+  } else {
+    addHistory(value, "win");
+    marker.style.left = pct(secret) + "%";
+    marker.hidden = false;
+
+    let text = `You guessed it! The number was ${secret}, found in ${guesses} ${guesses === 1 ? "attempt" : "attempts"}.`;
+    if (guesses < 10) text += " Wahhhh Madarchod";
+    setMessage(text, "win");
+    endGame();
+  }
+
+  updateTrack();
+  input.value = "";
+  if (!input.disabled) input.focus();
+}
+
+guessBtn.addEventListener("click", handleGuess);
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleGuess();
+});
+restartBtn.addEventListener("click", newGame);
+
+newGame();
+</script>
+</body>
+</html>
